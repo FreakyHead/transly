@@ -1,0 +1,23 @@
+{
+  "name": "transly",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "parse": "node src/transly.js --parse",
+    "generate": "node src/transly.js --generate",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "prettier": "^2.5.1"
+  },
+  "dependencies": {
+    "flat": "^5.0.2",
+    "fs-extra": "^10.0.0",
+    "lodash": "^4.17.21",
+    "node-xlsx": "^0.20.0"
+  }
+}
