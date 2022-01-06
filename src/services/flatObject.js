@@ -9,7 +9,7 @@ function flatObject(object) {
       for (const x in flatObject1) {
         if (!flatObject1.hasOwnProperty(x)) continue;
 
-        toReturn[i + "." + x] = flatObject1[x];
+        toReturn[i + ";" + x] = flatObject1[x];
       }
     } else {
       toReturn[i] = object[i];
