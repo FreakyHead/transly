@@ -3,6 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const { flatObject } = require("./services/flatObject");
 const { findPosition } = require("./helpers/findPosition");
+const { mergeObject } = require("./helpers/mergeObject");
 const xlsx = require("node-xlsx");
 const fse = require("fs-extra");
 
@@ -16,7 +17,7 @@ function createXLSX() {
   files.forEach((file, index) => {
     const paths = file
       .split("JSON")[1]
-      .split("/")
+      .split(path.sep)
       .filter((x) => x !== "");
     const filePath =
       paths.length > 1 ? paths.slice(0, paths.length - 1).join("/") : "";
@@ -45,7 +46,7 @@ function createXLSX() {
 
   fs.writeFileSync(
     path.resolve(__dirname, "../translations/XLSX", "translations.xlsx"),
-    xlsx.build([{ name: "translations", data: data }])
+    xlsx.build([{ name: "translations", data }])
   );
 }
 
@@ -65,25 +66,28 @@ function createJSONs() {
     const [path, key, ...translations] = el;
 
     translations.forEach((translation, index) => {
-      const elements = files.get(`${path}/${languages[index]}`);
-      files.set(`${path}/${languages[index]}`, {
-        ...elements,
-        [key]: translation,
-      });
+      const elements = files.get(`${path}/${languages[index]}`) || {};
+      files.set(
+        `${path}/${languages[index]}`,
+        mergeObject(elements, key, translation)
+      );
     });
   });
 
   files.forEach((v, k) => {
-    const dirname = path.resolve(__dirname, '../');
+    const dirname = path.resolve(__dirname, "../");
     console.log(dirname);
-    fse.outputFile(`${dirname}/translations/JSONs/${k}.json`, JSON.stringify(v));
+    fse.outputFile(
+      `${dirname}/translations/JSONs/${k}.json`,
+      JSON.stringify(v, null, 2)
+    );
   });
 }
 
-if (process.argv[2] === '--parse') {
+if (process.argv[2] === "--parse") {
   createXLSX();
 }
 
-if (process.argv[2] === '--generate') {
+if (process.argv[2] === "--generate") {
   createJSONs();
 }
