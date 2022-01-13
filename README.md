@@ -7,7 +7,7 @@ To convert from JSONs you need to put your files in root of project to directory
 
 To convert from XLSX you need to put your XLSX file (translations.xlsx) in root of project to directory `translations/XLSX`
 
-###Commands:
+### Commands:
 
 `npm run parse ` - parse JSON files in translations/JSON folder and generate the translation file
 
