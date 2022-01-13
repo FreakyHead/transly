@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const { createFileList } = require("./services/filesystem");
 const path = require("path");
 const fs = require("fs");

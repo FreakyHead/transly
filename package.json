@@ -2,7 +2,8 @@
   "name": "transly",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "./src/transly.js",
+  "bin": "./src/transly.js",
   "scripts": {
     "parse": "node src/transly.js --parse",
     "generate": "node src/transly.js --generate",
