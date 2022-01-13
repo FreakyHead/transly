@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const { createFileList } = require("./services/filesystem");
 const path = require("path");
 const fs = require("fs");
@@ -6,17 +8,24 @@ const { findPosition } = require("./helpers/findPosition");
 const { mergeObject } = require("./helpers/mergeObject");
 const xlsx = require("node-xlsx");
 const fse = require("fs-extra");
+const yargs = require("yargs");
 
-function createXLSX() {
-  const files = createFileList(
-    `${path.resolve(__dirname, "../translations/JSON")}`
+function createXLSX(translationPath, outputPath) {
+  const files = createFileList(`${path.resolve(translationPath)}`).filter(
+    (file) => file.includes(".json")
   );
+
+  if (!fs.existsSync(outputPath)) {
+    fs.mkdirSync(outputPath, {
+      recursive: true,
+    });
+  }
 
   const data = [["PATH", "KEY"]];
 
   files.forEach((file, index) => {
     const paths = file
-      .split("JSON")[1]
+      .split(translationPath)[1]
       .split(path.sep)
       .filter((x) => x !== "");
     const filePath =
@@ -45,16 +54,15 @@ function createXLSX() {
   });
 
   fs.writeFileSync(
-    path.resolve(__dirname, "../translations/XLSX", "translations.xlsx"),
+    path.resolve(outputPath, "translations.xlsx"),
     xlsx.build([{ name: "translations", data }])
   );
 }
 
-function createJSONs() {
+function createJSONs(translationPath, outputPath) {
   const workSheetsFromFile = xlsx.parse(
-    path.resolve(__dirname, "../translations/XLSX", "translations.xlsx")
+    path.resolve(translationPath, "translations.xlsx")
   );
-  console.log(workSheetsFromFile[0].data);
 
   const [headers, ...data] = workSheetsFromFile[0].data;
 
@@ -75,19 +83,61 @@ function createJSONs() {
   });
 
   files.forEach((v, k) => {
-    const dirname = path.resolve(__dirname, "../");
-    console.log(dirname);
-    fse.outputFile(
-      `${dirname}/translations/JSONs/${k}.json`,
-      JSON.stringify(v, null, 2)
-    );
+    const dirname = path.resolve(outputPath);
+    fse.outputFile(`${dirname}/${k}.json`, JSON.stringify(v, null, 2));
   });
 }
 
-if (process.argv[2] === "--parse") {
-  createXLSX();
-}
+const parse = {
+  command: "parse",
+  desc: "parse JSON files and generate the translation file",
+  builder: (yargs) =>
+    yargs
+      .option("translations", {
+        desc: "path to translation files",
+        type: "string",
+        alias: "t",
+        default: "./translations/JSON",
+      })
+      .option("output", {
+        desc: "path to output",
+        type: "string",
+        alias: "o",
+        default: "./translations/XLSX",
+      }),
+  handler: (arv) => {
+    try {
+      createXLSX(arv.translations, arv.output);
+    } catch (error) {
+      console.error(error);
+    }
+  },
+};
 
-if (process.argv[2] === "--generate") {
-  createJSONs();
-}
+const generate = {
+  command: "generate",
+  desc: "parse XLSX file and generate translations for each locale",
+  builder: (yargs) =>
+    yargs
+      .option("translations", {
+        desc: "path to translation files",
+        type: "string",
+        alias: "t",
+        default: "./translations/XLSX",
+      })
+      .option("output", {
+        desc: "path to output",
+        type: "string",
+        alias: "o",
+        default: "./translations/JSON",
+      }),
+  handler: (arv) => {
+    try {
+      createJSONs(arv.translations, arv.output);
+    } catch (error) {
+      console.error(error);
+    }
+  },
+};
+
+yargs.command(parse).command(generate).help().argv;
