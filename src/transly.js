@@ -5,14 +5,33 @@ const path = require("path");
 const fs = require("fs");
 const { flatObject } = require("./services/flatObject");
 const { findPosition } = require("./helpers/findPosition");
+const {
+  getValueByStringifiedKey,
+} = require("./helpers/getValueByStringifiedKey");
+const {
+  setValueByStringifiedKey,
+} = require("./helpers/setValueByStringifiedKey");
 const { mergeObject } = require("./helpers/mergeObject");
 const xlsx = require("node-xlsx");
 const fse = require("fs-extra");
 const yargs = require("yargs");
+const logger = require("./helpers/logger");
+
+const JSON_EXTENSION = ".json";
+
+function addNormalizedValue(inputJSON, key, translation, filePath) {
+  const normalizedValue = getValueByStringifiedKey(key, inputJSON);
+
+  if (normalizedValue) {
+    setValueByStringifiedKey(key, translation, inputJSON);
+  } else if (inputJSON) {
+    logger.warn(`Key '${key}' doesn't exist in initial JSON ${filePath}`);
+  }
+}
 
 function createXLSX(translationPath, outputPath) {
   const files = createFileList(`${path.resolve(translationPath)}`).filter(
-    (file) => file.includes(".json")
+    (file) => file.includes(JSON_EXTENSION)
   );
 
   if (!fs.existsSync(outputPath)) {
@@ -23,9 +42,9 @@ function createXLSX(translationPath, outputPath) {
 
   const data = [["PATH", "KEY"]];
 
-  files.forEach((file, index) => {
+  files.forEach((file) => {
     const paths = file
-      .split(translationPath)[1]
+      .split(translationPath.substring(1))[1]
       .split(path.sep)
       .filter((x) => x !== "");
     const filePath =
@@ -59,7 +78,7 @@ function createXLSX(translationPath, outputPath) {
   );
 }
 
-function createJSONs(translationPath, outputPath) {
+function createJSONs(translationPath, outputPath, input, outputNormalized) {
   const workSheetsFromFile = xlsx.parse(
     path.resolve(translationPath, "translations.xlsx")
   );
@@ -70,29 +89,54 @@ function createJSONs(translationPath, outputPath) {
 
   const files = new Map();
 
+  const inputJSONs = new Map();
+
+  const inputJSONFiles = createFileList(`${path.resolve(input)}`).filter(
+    (file) => file.includes(JSON_EXTENSION)
+  );
+
+  inputJSONFiles.forEach((file) => {
+    const paths = file
+      .split(input.substring(1))[1]
+      .split(path.sep)
+      .filter((x) => x !== "");
+    const content = JSON.parse(fs.readFileSync(file, "utf-8"));
+    inputJSONs.set(paths.join("/"), content);
+  });
+
+  if (!fs.existsSync(outputNormalized)) {
+    fs.mkdirSync(outputNormalized, {
+      recursive: true,
+    });
+  }
+
   data.forEach((el) => {
     const [path, key, ...translations] = el;
 
     translations.forEach((translation, index) => {
-      const elements = files.get(`${path}/${languages[index]}`) || {};
-      files.set(
-        `${path}/${languages[index]}`,
-        mergeObject(elements, key, translation)
-      );
+      const filePath = `${path}/${languages[index]}${JSON_EXTENSION}`;
+      const elements = files.get(filePath) || {};
+      files.set(filePath, mergeObject(elements, key, translation));
+
+      addNormalizedValue(inputJSONs.get(filePath), key, translation, filePath);
     });
   });
 
   files.forEach((v, k) => {
     const dirname = path.resolve(outputPath);
-    fse.outputFile(`${dirname}/${k}.json`, JSON.stringify(v, null, 2));
+    fse.outputFile(`${dirname}/${k}`, JSON.stringify(v, null, 2));
+  });
+  inputJSONs.forEach((v, k) => {
+    const dirname = path.resolve(outputNormalized);
+    fse.outputFile(`${dirname}/${k}`, JSON.stringify(v, null, 2));
   });
 }
 
 const parse = {
   command: "parse",
   desc: "parse JSON files and generate the translation file",
-  builder: (yargs) =>
-    yargs
+  builder: (args) =>
+    args
       .option("translations", {
         desc: "path to translation files",
         type: "string",
@@ -109,7 +153,7 @@ const parse = {
     try {
       createXLSX(arv.translations, arv.output);
     } catch (error) {
-      console.error(error);
+      logger.error(error);
     }
   },
 };
@@ -117,8 +161,8 @@ const parse = {
 const generate = {
   command: "generate",
   desc: "parse XLSX file and generate translations for each locale",
-  builder: (yargs) =>
-    yargs
+  builder: (args) =>
+    args
       .option("translations", {
         desc: "path to translation files",
         type: "string",
@@ -129,13 +173,30 @@ const generate = {
         desc: "path to output",
         type: "string",
         alias: "o",
+        default: "./translations/JSON-output",
+      })
+      .option("output-normalized", {
+        desc: "path to output normalized",
+        type: "string",
+        alias: "n",
+        default: "./translations/JSON-output-normalized",
+      })
+      .option("input", {
+        desc: "path to input JSON",
+        type: "string",
+        alias: "i",
         default: "./translations/JSON",
       }),
   handler: (arv) => {
     try {
-      createJSONs(arv.translations, arv.output);
+      createJSONs(
+        arv.translations,
+        arv.output,
+        arv.input,
+        arv.outputNormalized
+      );
     } catch (error) {
-      console.error(error);
+      logger.error(error);
     }
   },
 };
