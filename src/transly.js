@@ -91,45 +91,56 @@ function createJSONs(translationPath, outputPath, input, outputNormalized) {
 
   const inputJSONs = new Map();
 
-  const inputJSONFiles = createFileList(`${path.resolve(input)}`).filter(
-    (file) => file.includes(JSON_EXTENSION)
-  );
+  if (outputNormalized) {
+    const inputJSONFiles = createFileList(`${path.resolve(input)}`).filter(
+      (file) => file.includes(JSON_EXTENSION)
+    );
 
-  inputJSONFiles.forEach((file) => {
-    const paths = file
-      .split(input.substring(1))[1]
-      .split(path.sep)
-      .filter((x) => x !== "");
-    const content = JSON.parse(fs.readFileSync(file, "utf-8"));
-    inputJSONs.set(paths.join("/"), content);
-  });
-
-  if (!fs.existsSync(outputNormalized)) {
-    fs.mkdirSync(outputNormalized, {
-      recursive: true,
+    inputJSONFiles.forEach((file) => {
+      const paths = file
+        .split(input.substring(1))[1]
+        .split(path.sep)
+        .filter((x) => x !== "");
+      const content = JSON.parse(fs.readFileSync(file, "utf-8"));
+      inputJSONs.set(paths.join("/"), content);
     });
-  }
 
+    if (!fs.existsSync(outputNormalized)) {
+      fs.mkdirSync(outputNormalized, {
+        recursive: true,
+      });
+    }
+  }
   data.forEach((el) => {
     const [path, key, ...translations] = el;
 
     translations.forEach((translation, index) => {
-      const filePath = `${path}/${languages[index]}${JSON_EXTENSION}`;
+      const filePath = `${path ? `${path}/` : ""}${
+        languages[index]
+      }${JSON_EXTENSION}`;
       const elements = files.get(filePath) || {};
       files.set(filePath, mergeObject(elements, key, translation));
-
-      addNormalizedValue(inputJSONs.get(filePath), key, translation, filePath);
+      if (outputNormalized) {
+        addNormalizedValue(
+          inputJSONs.get(filePath),
+          key,
+          translation,
+          filePath
+        );
+      }
     });
   });
 
   files.forEach((v, k) => {
     const dirname = path.resolve(outputPath);
-    fse.outputFile(`${dirname}/${k}`, JSON.stringify(v, null, 2));
+    fse.outputFileSync(`${dirname}/${k}`, JSON.stringify(v, null, 2));
   });
-  inputJSONs.forEach((v, k) => {
-    const dirname = path.resolve(outputNormalized);
-    fse.outputFile(`${dirname}/${k}`, JSON.stringify(v, null, 2));
-  });
+  if (outputNormalized) {
+    inputJSONs.forEach((v, k) => {
+      const dirname = path.resolve(outputNormalized);
+      fse.outputFileSync(`${dirname}/${k}`, JSON.stringify(v, null, 2));
+    });
+  }
 }
 
 const parse = {
@@ -179,7 +190,6 @@ const generate = {
         desc: "path to output normalized",
         type: "string",
         alias: "n",
-        default: "./translations/JSON-output-normalized",
       })
       .option("input", {
         desc: "path to input JSON",

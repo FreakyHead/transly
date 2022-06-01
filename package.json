@@ -6,7 +6,7 @@
   "bin": "./src/transly.js",
   "scripts": {
     "parse": "node src/transly.js parse",
-    "generate": "node src/transly.js generate",
+    "generate": "node src/transly.js generate -n=./translations/JSON-output-normalized",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
