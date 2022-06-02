@@ -115,16 +115,18 @@ function createJSONs(translationPath, outputPath, input, outputNormalized) {
     const [path, key, ...translations] = el;
 
     translations.forEach((translation, index) => {
+      const formattedTranslation =
+        translation && translation.replace(/\r\n/g, "\n");
       const filePath = `${path ? `${path}/` : ""}${
         languages[index]
       }${JSON_EXTENSION}`;
       const elements = files.get(filePath) || {};
-      files.set(filePath, mergeObject(elements, key, translation));
+      files.set(filePath, mergeObject(elements, key, formattedTranslation));
       if (outputNormalized) {
         addNormalizedValue(
           inputJSONs.get(filePath),
           key,
-          translation,
+          formattedTranslation,
           filePath
         );
       }
